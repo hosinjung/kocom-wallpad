@@ -129,6 +129,7 @@ class KocomGateway:
         self._last_tx_monotonic: float = 0.0
         self._restore_mode: bool = False
         self._force_register_uid: str | None = None
+        self._last_unicast_ts: dict[str, float] = {}
 
     async def async_start(self) -> None:
         LOGGER.info("Starting gateway - %s:%s", self.host, self.port or "")
@@ -196,6 +197,13 @@ class KocomGateway:
                 [dev],
             )
             self._notify_pendings(dev)
+
+        # Record last unicast update time for guard against immediate ALL_OFF override
+        try:
+            if dev.key.device_type in (DeviceType.LIGHT, DeviceType.OUTLET):
+                self._last_unicast_ts[dev.key.unique_id] = asyncio.get_running_loop().time()
+        except Exception:
+            pass
             return
 
         if changed:
@@ -246,32 +254,52 @@ class KocomGateway:
         finally:
             self._restore_mode = False
 
-    def _notify_pendings(self, dev: DeviceState) -> None:
-        if not self._pendings:
-            return
-        hit: list[_PendingWaiter] = []
-        for p in self._pendings:
+    
+    def _handle_all_off_broadcast(self, dest: int, src: int, raw: bytes) -> None:
+        LOGGER.info("ALL_OFF broadcast received (dest=%04x src=%04x)", dest, src)
+        lights = self.registry.all_by_platform(Platform.LIGHT)
+        now = asyncio.get_running_loop().time()
+        GUARD_SEC = 0.75
+        changed_count = 0
+        for dev in lights:
             try:
-                if p.key.key == dev.key.key and p.predicate(dev):
-                    hit.append(p)
-            except Exception:
-                # predicate 내부 오류 방어
-                continue
-        if hit:
-            for p in hit:
-                if not p.future.done():
-                    p.future.set_result(dev)
-                try:
-                    self._pendings.remove(p)
-                except ValueError:
-                    pass
+                last_uni = self._last_unicast_ts.get(dev.key.unique_id, 0.0)
+                if now - last_uni < GUARD_SEC:
+                    LOGGER.debug("ALL_OFF guard skip (%.3fs < %.3fs) dev=%s", now - last_uni, GUARD_SEC, dev.key.unique_id)
+                    continue
+                if getattr(dev, "state", None):
+                    dev.state = False
+                    async_dispatcher_send(
+                        self.hass,
+                        self.async_signal_device_updated(dev.key.unique_id),
+                        dev,
+                    )
+                    changed_count += 1
+            except Exception as e:
+                LOGGER.debug("ALL_OFF: failed to update dev=%s err=%s", getattr(dev, "key", "?"), e)
+        LOGGER.debug("ALL_OFF: %d light(s) turned off.", changed_count)
 
-    async def _wait_for_confirmation(
-        self,
-        key: DeviceKey,
-        predicate: Callable[[DeviceState], bool],
-        timeout: float,
-    ) -> DeviceState:
+    def _notify_pendings(self, dev: DeviceState) -> None:
+            if not self._pendings:
+                return
+            hit: list[_PendingWaiter] = []
+            for p in self._pendings:
+                try:
+                    if p.key.key == dev.key.key and p.predicate(dev):
+                        hit.append(p)
+                except Exception:
+                    # predicate 내부 오류 방어
+                    continue
+            if hit:
+                for p in hit:
+                    if not p.future.done():
+                        p.future.set_result(dev)
+                    try:
+                        self._pendings.remove(p)
+                    except ValueError:
+                        pass
+
+    async def _wait_for_confirmation(self, key: DeviceKey, predicate: Callable[[DeviceState], bool], timeout: float ) -> DeviceState:
         loop = asyncio.get_running_loop()
         waiter = _PendingWaiter(key, predicate, loop)
         self._pendings.append(waiter)

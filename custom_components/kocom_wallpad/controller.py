@@ -146,6 +146,32 @@ class KocomController:
             LOGGER.debug("Packet checksum is invalid. raw=%s", frame.raw.hex())
             return
 
+        # Strictly handle ALL-OFF scene (0x9C frame with opcode=0xFF and room=0xFF)
+        if frame.raw[3] == 0x9C:
+            try:
+                opcode = frame.payload[0] if len(frame.payload) > 0 else 0x00
+                if opcode == 0xFF and frame.dev_room == 0xFF:
+                    dest = (frame.dest[0] << 8) | frame.dest[1]
+                    src = (frame.src[0] << 8) | frame.src[1]
+                    self.gateway.handle_scene_9c(dest, src, opcode, frame.raw)
+                else:
+                    LOGGER.debug("Scene(0x9C) ignored (opcode=0x%02x room=0x%02x). raw=%s",
+                                 opcode, frame.dev_room, frame.raw.hex())
+            except Exception as e:
+                LOGGER.debug("Scene(0x9C) handling error: %s raw=%s", e, frame.raw.hex())
+            return
+
+        # Handle Scene/Broadcast frames (packet_type=0x9, e.g., 0x9C ALL-OFF)
+        if frame.packet_type == 0x09:
+            try:
+                opcode = frame.payload[0] if len(frame.payload) > 0 else 0x00
+                dest = (frame.dest[0] << 8) | frame.dest[1]
+                src = (frame.src[0] << 8) | frame.src[1]
+                self.gateway.handle_scene_9c(dest, src, opcode, frame.raw)
+            except Exception as e:
+                LOGGER.debug("Scene frame handling error: %s raw=%s", e, frame.raw.hex())
+            return
+
         dev_state = None
         if frame.dev_type == DeviceType.LIGHT:
             if frame.dev_room == 0xFF:

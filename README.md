@@ -2,14 +2,14 @@
 
 # Kocom Wallpad Integration for Home Assistant
 Home Assistant를 위한 Kocom Wallpad 통합구성요소
+lunDreame님의 Repository의 Fork버전이며 수지구청 롯데캐슬 하이브엘에 맞게 수정된 버전입니다.
 
 ## 기여
 문제가 있나요? [Issues](https://github.com/lunDreame/kocom-wallpad/issues) 탭에 작성해 주세요.
 
-- 더 좋은 아이디어가 있나요? [Pull requests](https://github.com/lunDreame/kocom-wallpad/pulls)로 공유해 주세요!
 - 이 통합을 사용하면서 발생하는 문제에 대해서는 책임지지 않습니다.
 
-도움이 되셨나요? [카카오페이](https://qr.kakaopay.com/FWDWOBBmR) [토스](https://toss.me/lundreamer)
+도움이 되셨다면 원작자인 lunDreame님께 후원 부탁드립니다. [카카오페이](https://qr.kakaopay.com/FWDWOBBmR) [토스](https://toss.me/lundreamer)
 
 ## 설치
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=lunDreame&repository=kocom-wallpad&category=Integration)
@@ -27,21 +27,21 @@ Home Assistant를 위한 Kocom Wallpad 통합구성요소
 - 기본적인 환경에선 EW11 장치 하나 필요 추가적인 인터폰 제어 시에는 기존 장치 포함 하나 더 필요
 - 인터폰 결선의 경우 [해당](https://blog.oriang.net/45) 링크 참조
 
-## 기능
+## 하이브엘 코콤 월패드에서 확인된 기능
 
 | 기기       | 지원  | 속성                           |
 |-----------|------|-------------------------------|
 | 조명 (디밍) | O    |                               |
-| 일괄소등    | O    |                               |
+| 일괄소등    | X    |                               |
 | 콘센트      | O    |                               |
 | 난방       | O    | 외출 모드                        |
-| 에어컨     | O    |                                |
+| 에어컨     | X    |                                |
 | 환기       | O    |                                |
 | 가스       | O    | 잠금만 지원                       |
-| 실내 공기질  | O    |                                |
+| 실내 공기질  | X    |                                |
 | 모션(현관)  | O    |                                |
 | 인터폰      | X    |                                 |
-| 엘리베이터   | O    | 방향, 층수                       |
+| 엘리베이터   | O    | 방향(층수는 작동하지 않음)            |
 
 - **초기 장치 추가 시에는 최초 한번은 장치를 ON/OFF 하셔야 합니다.**
 - 엘리베이터의 경우 현관 스위치가 있는 경우 현관 스위치에서 호출하셔야 정상적으로 등록됩니다.
@@ -50,8 +50,6 @@ Home Assistant를 위한 Kocom Wallpad 통합구성요소
 ## 디버깅
 - 문제 파악을 위해 아래 코드를 `configuration.yaml` 파일에 추가 후 HomeAssistant를 재시작해 주세요.
 - 디버깅 외에는 활성화하지 마세요.
-
-문의 [이메일](mailto:lundreame34@gmail.com)로 연락 부탁드립니다.
 
 ```yaml
 logger:
